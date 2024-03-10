@@ -8,9 +8,10 @@ export default function App() {
   const [notes, setNotes] = React.useState(
     () => JSON.parse(localStorage.getItem('notes')) || []
   );
-  const [currentNoteId, setCurrentNoteId] = React.useState(
-    (notes[0] && notes[0].id) || ''
-  );
+  const [currentNoteId, setCurrentNoteId] = React.useState(notes[0]?.id || '');
+
+  const currentNote =
+    notes.find((note) => note.id === currentNoteId) || notes[0];
 
   function createNewNote() {
     const newNote = {
@@ -53,14 +54,6 @@ export default function App() {
     setNotes((oldNotes) => oldNotes.filter((oldNote) => oldNote.id !== noteId));
   }
 
-  function findCurrentNote() {
-    return (
-      notes.find((note) => {
-        return note.id === currentNoteId;
-      }) || notes[0]
-    );
-  }
-
   React.useEffect(() => {
     localStorage.setItem('notes', JSON.stringify(notes));
   }, [notes]);
@@ -71,13 +64,13 @@ export default function App() {
         <Split sizes={[30, 70]} direction="horizontal" className="split">
           <Sidebar
             notes={notes}
-            currentNote={findCurrentNote()}
+            currentNote={currentNote}
             setCurrentNoteId={setCurrentNoteId}
             newNote={createNewNote}
             deleteNote={deleteNote}
           />
           {currentNoteId && notes.length > 0 && (
-            <Editor currentNote={findCurrentNote()} updateNote={updateNote} />
+            <Editor currentNote={currentNote} updateNote={updateNote} />
           )}
         </Split>
       ) : (
