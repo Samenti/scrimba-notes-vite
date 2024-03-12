@@ -2,61 +2,53 @@ import React from 'react';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import Split from 'react-split';
-import { nanoid } from 'nanoid';
+import { onSnapshot, addDoc, doc, deleteDoc, setDoc } from 'firebase/firestore';
+import { db, notesCollection } from './firebase';
 
 export default function App() {
-  const [notes, setNotes] = React.useState(
-    () => JSON.parse(localStorage.getItem('notes')) || []
-  );
-  const [currentNoteId, setCurrentNoteId] = React.useState(notes[0]?.id || '');
+  const [notes, setNotes] = React.useState([]);
+  const [currentNoteId, setCurrentNoteId] = React.useState('');
 
   const currentNote =
     notes.find((note) => note.id === currentNoteId) || notes[0];
 
-  function createNewNote() {
+  async function createNewNote() {
     const newNote = {
-      id: nanoid(),
       body: "# Type your markdown note's title here",
     };
-    setNotes((prevNotes) => [newNote, ...prevNotes]);
-    setCurrentNoteId(newNote.id);
+    const newNoteRef = await addDoc(notesCollection, newNote);
+    setCurrentNoteId(newNoteRef.id);
   }
 
-  function updateNote(text) {
-    setNotes((oldNotes) =>
-      oldNotes.map((oldNote) => {
-        return oldNote.id === currentNoteId
-          ? { ...oldNote, body: text }
-          : oldNote;
-      })
-    );
-    setNotes((oldNotes) => [
-      oldNotes.find((note) => note.id === currentNoteId),
-      ...oldNotes.filter((note) => note.id !== currentNoteId),
-    ]);
-    /* different solution:
-    setNotes(oldNotes => {
-      const newArray = []
-      for(let i = 0; i < oldNotes.length; i++) {
-        const oldNote = oldNotes[i]
-        if(oldNote.id === currentNoteId) {
-          newArray.unshift({ ...oldNote, body: text })
-        } else {
-          newArray.push(oldNote)
-        }
-      }
-      return newArray
-    }) */
+  async function updateNote(text) {
+    const docRef = doc(db, 'notes', currentNoteId);
+    await setDoc(docRef, { body: text }, { merge: true });
   }
 
-  function deleteNote(event, noteId) {
-    event.stopPropagation();
-    setNotes((oldNotes) => oldNotes.filter((oldNote) => oldNote.id !== noteId));
+  async function deleteNote(noteId) {
+    const docRef = doc(db, 'notes', noteId);
+    await deleteDoc(docRef);
   }
 
   React.useEffect(() => {
-    localStorage.setItem('notes', JSON.stringify(notes));
-  }, [notes]);
+    const unsubscribe = onSnapshot(notesCollection, (snapshot) => {
+      // Sync up our local notes array with the snapshot data
+      const notesArray = snapshot.docs.map((doc) => ({
+        ...doc.data(),
+        id: doc.id,
+      }));
+
+      setNotes(notesArray);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  React.useEffect(() => {
+    if (!currentNoteId) {
+      setCurrentNoteId(notes[0]?.id);
+    }
+  }, [notes, currentNoteId]);
 
   return (
     <main>
@@ -69,9 +61,7 @@ export default function App() {
             newNote={createNewNote}
             deleteNote={deleteNote}
           />
-          {currentNoteId && notes.length > 0 && (
-            <Editor currentNote={currentNote} updateNote={updateNote} />
-          )}
+          <Editor currentNote={currentNote} updateNote={updateNote} />
         </Split>
       ) : (
         <div className="no-notes">

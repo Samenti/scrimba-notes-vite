@@ -19,5 +19,6 @@ module.exports = {
     ],
     'react/prop-types': 0,
     'react/no-deprecated': 'off',
+    'no-unused-vars': 'off',
   },
 };
