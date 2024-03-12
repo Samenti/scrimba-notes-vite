@@ -8,6 +8,7 @@ import { db, notesCollection } from './firebase';
 export default function App() {
   const [notes, setNotes] = React.useState([]);
   const [currentNoteId, setCurrentNoteId] = React.useState('');
+  const [tempNoteText, setTempNoteText] = React.useState('');
 
   const currentNote =
     notes.find((note) => note.id === currentNoteId) || notes[0];
@@ -60,6 +61,19 @@ export default function App() {
     }
   }, [notes, currentNoteId]);
 
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (tempNoteText !== currentNote?.body) updateNote(tempNoteText);
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [tempNoteText, currentNote]);
+
+  React.useEffect(() => {
+    if (currentNote) {
+      setTempNoteText(currentNote.body);
+    }
+  }, [currentNote]);
+
   return (
     <main>
       {notes.length > 0 ? (
@@ -71,7 +85,7 @@ export default function App() {
             newNote={createNewNote}
             deleteNote={deleteNote}
           />
-          <Editor currentNote={currentNote} updateNote={updateNote} />
+          <Editor text={tempNoteText} updateText={setTempNoteText} />
         </Split>
       ) : (
         <div className="no-notes">
